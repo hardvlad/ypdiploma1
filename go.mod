@@ -1,6 +1,6 @@
 module github.com/hardvlad/ypdiploma1
 
-go 1.25.2
+go 1.24.11
 
 require (
 	github.com/andybalholm/brotli v1.2.0
