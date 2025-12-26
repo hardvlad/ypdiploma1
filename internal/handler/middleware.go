@@ -13,12 +13,9 @@ import (
 
 	"github.com/andybalholm/brotli"
 	"github.com/hardvlad/ypdiploma1/internal/auth"
+	"github.com/hardvlad/ypdiploma1/internal/handler/services"
 	"go.uber.org/zap"
 )
-
-type contextKey string
-
-const UserIDKey contextKey = "user_id"
 
 type compressWriter struct {
 	http.ResponseWriter
@@ -116,6 +113,12 @@ func RequestDecompressHandle(next http.Handler, sugarLogger *zap.SugaredLogger) 
 func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, cookieName string, secretKey string, db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		authRoutes := []string{"/api/user/orders", "/api/user/balance", "/api/user/balance/withdraw", "/api/user/withdrawals"}
+		if !slices.Contains(authRoutes, r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if cookieName == "" || secretKey == "" || db == nil {
 			next.ServeHTTP(w, r)
 			return
@@ -135,8 +138,7 @@ func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, 
 			userID = uid
 		}
 
-		ctx := context.WithValue(r.Context(), UserIDKey, userID)
-
+		ctx := context.WithValue(r.Context(), services.UserIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

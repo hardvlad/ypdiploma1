@@ -12,11 +12,11 @@ create table statuses
     name varchar(255) not null unique
 );
 
-insert into statuses (name) values
-('NEW'),
-('PROCESSING'),
-('INVALID'),
-('PROCESSED');
+insert into statuses (id, name) values
+(1, 'NEW'),
+(2, 'PROCESSING'),
+(3, 'INVALID'),
+(4, 'PROCESSED');
 
 create table orders
 (
@@ -26,7 +26,7 @@ create table orders
     status_id integer not null references statuses(id),
     number varchar(255) not null,
     accrual numeric(10,2) default 0.00,
-    unique(user_id, number)
+    unique(number)
 );
 
 create table withdrawals

@@ -63,3 +63,22 @@ func (s *Storage) GetUserIDPasswordHashByLogin(login string) (int, string, error
 	}
 	return userID, pwdHash, nil
 }
+
+func (s *Storage) GetUserIDOfOrder(orderNumber string) (int, error) {
+	row := s.DBConn.QueryRowContext(context.Background(), "SELECT user_id from orders where number = $1", orderNumber)
+
+	userID := 0
+	err := row.Scan(&userID)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return 0, err
+		}
+		return 0, nil
+	}
+	return userID, nil
+}
+
+func (s *Storage) InsertNewOrder(orderNumber string, userID int) error {
+	_, err := s.DBConn.ExecContext(context.Background(), "INSERT INTO orders (number, user_id, status_id) VALUES ($1, $2, 1)", orderNumber, userID)
+	return err
+}
