@@ -35,6 +35,9 @@ func main() {
 	var store repository.StorageInterface
 
 	db, err := conf.DBConfig.InitDB()
+	if err != nil {
+		sugarLogger.Fatalw(err.Error(), "event", "инициализация базы данных")
+	}
 
 	store = pg.NewPGStorage(db, sugarLogger)
 	defer db.Close()
