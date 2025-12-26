@@ -7,6 +7,7 @@ import (
 type StorageInterface interface {
 	GetUserIDByLogin(login string) (int, error)
 	CreateUser(login string, pwdHash string) (int, error)
+	GetUserIDPasswordHashByLogin(login string) (int, string, error)
 }
 
 var ErrorKeyExists = errors.New("key already exists")
