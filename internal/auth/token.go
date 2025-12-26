@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -51,19 +50,4 @@ func GetUserID(tokenString string, secretKey string) (int, error) {
 	}
 
 	return claims.UserID, nil
-}
-
-func CreateNewUser(db *sql.DB, key string) (int, string, error) {
-	var userID int
-	err := db.QueryRow("INSERT INTO users (created_at) values (now()) RETURNING id").Scan(&userID)
-	if err != nil {
-		return 0, "", err
-	}
-
-	token, err := CreateToken(time.Hour*24, int(userID), key)
-	if err != nil {
-		return 0, "", err
-	}
-
-	return int(userID), token, nil
 }

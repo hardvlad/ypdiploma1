@@ -121,7 +121,6 @@ func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, 
 			return
 		}
 
-		setCookie := ""
 		userID := 0
 		c, err := r.Cookie(cookieName)
 		if err != nil {
@@ -136,22 +135,7 @@ func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, 
 			userID = uid
 		}
 
-		if userID == 0 {
-			userID, setCookie, err = auth.CreateNewUser(db, secretKey)
-			if err != nil {
-				sugarLogger.Errorw(err.Error(), "event", "создание нового пользователя")
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-		}
-
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
-		if setCookie != "" {
-			http.SetCookie(w, &http.Cookie{
-				Name:  cookieName,
-				Value: setCookie,
-			})
-		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
