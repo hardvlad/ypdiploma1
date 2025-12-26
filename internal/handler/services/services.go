@@ -30,7 +30,7 @@ func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInte
 	}
 
 	mux.Post(`/api/user/register`, createRegisterHandler(handlersData))
-	mux.Post(`/api/user/login`, createPostHandler(handlersData))
+	mux.Post(`/api/user/login`, createLoginHandler(handlersData))
 	mux.Post(`/api/user/orders`, createPostHandler(handlersData))
 
 	mux.Get(`/api/user/orders`, createGetHandler(handlersData))

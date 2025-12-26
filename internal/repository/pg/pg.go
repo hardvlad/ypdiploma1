@@ -48,3 +48,18 @@ func (s *Storage) CreateUser(login string, pwdHash string) (int, error) {
 
 	return userID, nil
 }
+
+func (s *Storage) GetUserIDPasswordHashByLogin(login string) (int, string, error) {
+	row := s.DBConn.QueryRowContext(context.Background(), "SELECT id, password_hash from users where login = $1", login)
+
+	userID := 0
+	var pwdHash string
+	err := row.Scan(&userID, &pwdHash)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return 0, "", err
+		}
+		return 0, "", nil
+	}
+	return userID, pwdHash, nil
+}
