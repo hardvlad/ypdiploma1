@@ -1,12 +1,29 @@
 package repository
 
-import (
-	"errors"
-)
+import "time"
+
+type OrdersResult struct {
+	OrderNumber string    `json:"number"`
+	Status      string    `json:"status"`
+	Accrual     float64   `json:"accrual,omitempty"`
+	UploadedAt  time.Time `json:"uploaded_at"`
+}
+
+type WithdrawalsResult struct {
+	OrderNumber string    `json:"order"`
+	Sum         float64   `json:"sum"`
+	ProcessedAt time.Time `json:"processed_at"`
+}
 
 type StorageInterface interface {
 	GetUserIDByLogin(login string) (int, error)
 	CreateUser(login string, pwdHash string) (int, error)
+	GetUserIDPasswordHashByLogin(login string) (int, string, error)
+	GetUserIDOfOrder(orderNumber string) (int, error)
+	InsertNewOrder(orderNumber string, userID int) error
+	GetOrders(userID int) ([]OrdersResult, error)
+	GetUserBalance(userID int) (float64, float64, error)
+	InsertWithdrawal(orderNumber string, sum float64, userID int) error
+	GetWithdrawals(userID int) ([]WithdrawalsResult, error)
+	SetOrderStatusAccrual(orderNumber string, status string, accrual float64) error
 }
-
-var ErrorKeyExists = errors.New("key already exists")

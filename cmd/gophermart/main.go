@@ -30,7 +30,7 @@ func main() {
 	sugarLogger := myLogger.Sugar()
 	sugarLogger.Infow("Старт сервера", "addr", flags.RunAddress)
 
-	conf := config.NewConfig(flags.Dsn)
+	conf := config.NewConfig(flags.Dsn, flags.AccrualAddress)
 
 	var store repository.StorageInterface
 
