@@ -88,7 +88,7 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 	var accrual float64
 
 	for {
-		data.Logger.Debugw("Getting accruals", "event", "url", url)
+		data.Logger.Infow("Getting accruals", "url", url)
 		response, err := http.Get(url)
 		if err != nil {
 			data.Logger.Debugw(err.Error(), "event", "fetchOrderAccruals - http.Get error", "url", url)
@@ -96,7 +96,7 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 		}
 		defer response.Body.Close()
 
-		data.Logger.Debugw("Got accruals response", "event", "url", url, "code", response.StatusCode)
+		data.Logger.Infow("Got accruals response", "url", url, "code", response.StatusCode)
 
 		if response.StatusCode == http.StatusTooManyRequests {
 			waitTime := response.Header.Get("Retry-After")
@@ -118,7 +118,7 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 				continue
 			}
 
-			data.Logger.Debugw("Got accruals response data", "event", "url", url, "status", resp.Status, "accrual", resp.Accrual)
+			data.Logger.Infow("Got accruals response data", "url", url, "status", resp.Status, "accrual", resp.Accrual)
 
 			if resp.Status == "INVALID" || resp.Status == "PROCESSED" {
 				accrual = resp.Accrual
