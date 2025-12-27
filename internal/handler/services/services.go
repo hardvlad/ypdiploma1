@@ -110,6 +110,12 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 			continue
 		}
 
+		if response.StatusCode == http.StatusNoContent {
+			status = "INVALID"
+			accrual = 0
+			break
+		}
+
 		if response.StatusCode == http.StatusOK {
 			var resp AccrualResponse
 			dec := json.NewDecoder(response.Body)
