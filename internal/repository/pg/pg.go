@@ -130,3 +130,8 @@ func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
 
 	return withdrawalsSum, accrualsSum, nil
 }
+
+func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) error {
+	_, err := s.DBConn.ExecContext(context.Background(), "INSERT INTO withdrawals (number, amount, user_id) VALUES ($1, $2, $3)", orderNumber, sum, userID)
+	return err
+}
