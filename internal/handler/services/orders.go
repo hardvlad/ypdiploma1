@@ -77,6 +77,8 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 			return
 		}
 
+		ch <- orderNumber
+
 		writeResponse(w, r, commonResponse{
 			isError: false,
 			message: http.StatusText(http.StatusAccepted),
