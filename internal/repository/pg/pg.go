@@ -128,7 +128,7 @@ func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
 		accrualsSum = accruals.Float64
 	}
 
-	return withdrawalsSum, accrualsSum, nil
+	return accrualsSum, withdrawalsSum, nil
 }
 
 func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) error {
