@@ -138,6 +138,11 @@ func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, 
 			userID = uid
 		}
 
+		if userID == 0 {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
 		ctx := context.WithValue(r.Context(), services.UserIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
