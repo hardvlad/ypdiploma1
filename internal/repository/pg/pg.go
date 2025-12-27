@@ -106,3 +106,27 @@ func (s *Storage) GetOrders(userID int) ([]repository.OrdersResult, error) {
 	}
 	return orders, nil
 }
+
+func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
+	row := s.DBConn.QueryRowContext(context.Background(), "SELECT (select sum(amount) from withdrawals where user_id=users.id), (select sum(accrual) from orders where user_id=users.id) FROM users WHERE id = $1", userID)
+	var withdrawals sql.NullFloat64
+	var accruals sql.NullFloat64
+
+	err := row.Scan(&withdrawals, &accruals)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	withdrawalsSum := 0.0
+	accrualsSum := 0.0
+
+	if withdrawals.Valid {
+		withdrawalsSum = withdrawals.Float64
+	}
+
+	if accruals.Valid {
+		accrualsSum = accruals.Float64
+	}
+
+	return withdrawalsSum, accrualsSum, nil
+}

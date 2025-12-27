@@ -16,4 +16,5 @@ type StorageInterface interface {
 	GetUserIDOfOrder(orderNumber string) (int, error)
 	InsertNewOrder(orderNumber string, userID int) error
 	GetOrders(userID int) ([]OrdersResult, error)
+	GetUserBalance(userID int) (float64, float64, error)
 }

@@ -38,7 +38,7 @@ func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInte
 	mux.Post(`/api/user/orders`, createPostOrdersHandler(handlersData))
 
 	mux.Get(`/api/user/orders`, createGetOrdersHandler(handlersData))
-	mux.Get(`/api/user/balance`, createGetHandler(handlersData))
+	mux.Get(`/api/user/balance`, createGetBalanceHandler(handlersData))
 
 	mux.Post(`/api/user/balance/withdraw`, createPostHandler(handlersData))
 	mux.Get(`/api/user/withdrawals`, createGetHandler(handlersData))
