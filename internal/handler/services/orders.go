@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
@@ -81,5 +82,42 @@ func createPostOrdersHandler(data Handlers) http.HandlerFunc {
 			message: http.StatusText(http.StatusAccepted),
 			code:    http.StatusAccepted,
 		})
+	}
+}
+
+func createGetOrdersHandler(data Handlers) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		userID, ok := r.Context().Value(UserIDKey).(int)
+		if !ok {
+			writeResponse(w, r, commonResponse{
+				isError: true,
+				message: http.StatusText(http.StatusBadRequest),
+				code:    http.StatusBadRequest,
+			})
+		}
+
+		orders, err := data.Store.GetOrders(userID)
+		if err != nil {
+			writeResponse(w, r, commonResponse{
+				isError: true,
+				message: http.StatusText(http.StatusInternalServerError),
+				code:    http.StatusInternalServerError,
+			})
+			return
+		}
+
+		if len(orders) == 0 {
+			writeResponse(w, r, commonResponse{
+				isError: true,
+				message: http.StatusText(http.StatusNoContent),
+				code:    http.StatusNoContent,
+			})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(orders)
 	}
 }
