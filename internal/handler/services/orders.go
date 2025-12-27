@@ -8,7 +8,7 @@ import (
 	"github.com/hardvlad/ypdiploma1/internal/util"
 )
 
-func createPostOrdersHandler(data Handlers) http.HandlerFunc {
+func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		bodyBytes, err := io.ReadAll(r.Body)

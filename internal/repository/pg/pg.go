@@ -158,3 +158,14 @@ func (s *Storage) GetWithdrawals(userID int) ([]repository.WithdrawalsResult, er
 	}
 	return withdrawals, nil
 }
+
+func (s *Storage) SetOrderStatusAccrual(orderNumber string, status string, accrual float64) error {
+	var statusID int
+	err := s.DBConn.QueryRowContext(context.Background(), "SELECT id FROM statuses WHERE name = $1", status).Scan(&statusID)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.DBConn.ExecContext(context.Background(), "UPDATE orders SET status_id = $1, accrual = $2 WHERE number = $3", statusID, accrual, orderNumber)
+	return err
+}

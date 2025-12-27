@@ -1,7 +1,11 @@
 package services
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hardvlad/ypdiploma1/internal/config"
@@ -26,6 +30,12 @@ type commonResponse struct {
 	code        int
 }
 
+type AccrualResponse struct {
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float64 `json:"accrual"`
+}
+
 func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger) {
 	handlersData := Handlers{
 		Conf:   conf,
@@ -33,9 +43,12 @@ func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInte
 		Logger: sugarLogger,
 	}
 
+	ch := make(chan string, 100)
+	go accrualsWorker(handlersData, ch)
+
 	mux.Post(`/api/user/register`, createRegisterHandler(handlersData))
 	mux.Post(`/api/user/login`, createLoginHandler(handlersData))
-	mux.Post(`/api/user/orders`, createPostOrdersHandler(handlersData))
+	mux.Post(`/api/user/orders`, createPostOrdersHandler(handlersData, ch))
 
 	mux.Get(`/api/user/orders`, createGetOrdersHandler(handlersData))
 	mux.Get(`/api/user/balance`, createGetBalanceHandler(handlersData))
@@ -45,14 +58,70 @@ func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInte
 
 }
 
-func createPostHandler(data Handlers) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func accrualsWorker(data Handlers, ch chan string) {
+	for orderNumber := range ch {
+		err := processOrderAccruals(data, orderNumber)
+		if err != nil {
+			data.Logger.Errorw("accrualsWorker: processOrderAccruals error", "orderNumber", orderNumber, "error", err)
+		}
 	}
 }
 
-func createGetHandler(data Handlers) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func processOrderAccruals(data Handlers, number string) error {
+	_ = data.Store.SetOrderStatusAccrual(number, "PROCESSING", 0)
+
+	accrualUrl, err := url.JoinPath(data.Conf.AccrualAddress, "/api/orders/", number)
+	if err != nil {
+		return err
 	}
+
+	status, accrual, err := fetchOrderAccruals(data, accrualUrl)
+	if err != nil {
+		return err
+	}
+
+	return data.Store.SetOrderStatusAccrual(number, status, accrual)
+}
+
+func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
+	var status string
+	var accrual float64
+
+	for {
+		response, err := http.Get(url)
+		if err != nil {
+			data.Logger.Debugw(err.Error(), "event", "fetchOrderAccruals - http.Get error", "url", url)
+			return "", 0, err
+		}
+
+		if response.StatusCode == http.StatusTooManyRequests {
+			waitTime := response.Header.Get("Retry-After")
+			data.Logger.Debugw("fetchOrderAccruals - received 429 Too Many Requests", "url", url, "waitTime", waitTime)
+			waitSeconds, err := strconv.Atoi(waitTime)
+			if err != nil {
+				waitSeconds = 1
+			}
+
+			time.Sleep(time.Second * time.Duration(waitSeconds))
+			continue
+		}
+
+		if response.StatusCode == http.StatusOK {
+			var resp AccrualResponse
+			dec := json.NewDecoder(response.Body)
+			if err := dec.Decode(&resp); err != nil {
+				time.Sleep(time.Millisecond * 100)
+				continue
+			}
+
+			if resp.Status == "INVALID" || resp.Status == "PROCESSED" {
+				accrual = resp.Accrual
+				status = resp.Status
+				break
+			}
+		}
+	}
+	return status, accrual, nil
 }
 
 func writeResponse(w http.ResponseWriter, r *http.Request, resp commonResponse) {

@@ -25,4 +25,5 @@ type StorageInterface interface {
 	GetUserBalance(userID int) (float64, float64, error)
 	InsertWithdrawal(orderNumber string, sum float64, userID int) error
 	GetWithdrawals(userID int) ([]WithdrawalsResult, error)
+	SetOrderStatusAccrual(orderNumber string, status string, accrual float64) error
 }
