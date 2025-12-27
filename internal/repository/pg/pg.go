@@ -89,7 +89,12 @@ func (s *Storage) GetOrders(userID int) ([]repository.OrdersResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			s.logger.Error("Failed to close rows:", err)
+		}
+	}(rows)
 
 	var orders []repository.OrdersResult
 
