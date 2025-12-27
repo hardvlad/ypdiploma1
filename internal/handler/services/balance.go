@@ -129,3 +129,40 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 		})
 	}
 }
+
+func createGetWithdrawalsHandler(data Handlers) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		userID, ok := r.Context().Value(UserIDKey).(int)
+		if !ok {
+			writeResponse(w, r, commonResponse{
+				isError: true,
+				message: http.StatusText(http.StatusBadRequest),
+				code:    http.StatusBadRequest,
+			})
+		}
+
+		withdrawals, err := data.Store.GetWithdrawals(userID)
+		if err != nil {
+			writeResponse(w, r, commonResponse{
+				isError: true,
+				message: http.StatusText(http.StatusInternalServerError),
+				code:    http.StatusInternalServerError,
+			})
+			return
+		}
+
+		if len(withdrawals) == 0 {
+			writeResponse(w, r, commonResponse{
+				isError: true,
+				message: http.StatusText(http.StatusNoContent),
+				code:    http.StatusNoContent,
+			})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(withdrawals)
+	}
+}

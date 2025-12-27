@@ -9,6 +9,12 @@ type OrdersResult struct {
 	UploadedAt  time.Time `json:"uploaded_at"`
 }
 
+type WithdrawalsResult struct {
+	OrderNumber string    `json:"order"`
+	Sum         float64   `json:"sum"`
+	ProcessedAt time.Time `json:"processed_at"`
+}
+
 type StorageInterface interface {
 	GetUserIDByLogin(login string) (int, error)
 	CreateUser(login string, pwdHash string) (int, error)
@@ -18,4 +24,5 @@ type StorageInterface interface {
 	GetOrders(userID int) ([]OrdersResult, error)
 	GetUserBalance(userID int) (float64, float64, error)
 	InsertWithdrawal(orderNumber string, sum float64, userID int) error
+	GetWithdrawals(userID int) ([]WithdrawalsResult, error)
 }

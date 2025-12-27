@@ -135,3 +135,26 @@ func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) 
 	_, err := s.DBConn.ExecContext(context.Background(), "INSERT INTO withdrawals (number, amount, user_id) VALUES ($1, $2, $3)", orderNumber, sum, userID)
 	return err
 }
+
+func (s *Storage) GetWithdrawals(userID int) ([]repository.WithdrawalsResult, error) {
+	rows, err := s.DBConn.QueryContext(context.Background(), "SELECT number, amount, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC", userID)
+	if err != nil {
+		return nil, err
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	defer rows.Close()
+
+	var withdrawals []repository.WithdrawalsResult
+
+	for rows.Next() {
+		var withdrawal repository.WithdrawalsResult
+		err := rows.Scan(&withdrawal.OrderNumber, &withdrawal.Sum, &withdrawal.ProcessedAt)
+		if err != nil {
+			return nil, err
+		}
+		withdrawals = append(withdrawals, withdrawal)
+	}
+	return withdrawals, nil
+}
