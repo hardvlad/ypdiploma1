@@ -111,7 +111,7 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 		}
 
 		if response.StatusCode == http.StatusNoContent {
-			status = "INVALID"
+			status = "NEW"
 			accrual = 0
 			break
 		}
