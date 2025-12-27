@@ -85,7 +85,7 @@ func (s *Storage) InsertNewOrder(orderNumber string, userID int) error {
 }
 
 func (s *Storage) GetOrders(userID int) ([]repository.OrdersResult, error) {
-	rows, err := s.DBConn.QueryContext(context.Background(), "SELECT o.number, os.name, o.accrual, o.uploaded_at FROM orders o JOIN statuses os ON o.status_id = os.id WHERE o.user_id = $1 ORDER BY o.uploaded_at DESC", userID)
+	rows, err := s.DBConn.Query("SELECT o.number, os.name, o.accrual, o.uploaded_at FROM orders o JOIN statuses os ON o.status_id = os.id WHERE o.user_id = $1 ORDER BY o.uploaded_at DESC", userID)
 	if err != nil {
 		return nil, err
 	}

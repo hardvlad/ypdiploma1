@@ -70,12 +70,12 @@ func accrualsWorker(data Handlers, ch chan string) {
 func processOrderAccruals(data Handlers, number string) error {
 	_ = data.Store.SetOrderStatusAccrual(number, "PROCESSING", 0)
 
-	accrualUrl, err := url.JoinPath(data.Conf.AccrualAddress, "/api/orders/", number)
+	accrualURL, err := url.JoinPath(data.Conf.AccrualAddress, "/api/orders/", number)
 	if err != nil {
 		return err
 	}
 
-	status, accrual, err := fetchOrderAccruals(data, accrualUrl)
+	status, accrual, err := fetchOrderAccruals(data, accrualURL)
 	if err != nil {
 		return err
 	}
@@ -93,6 +93,7 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 			data.Logger.Debugw(err.Error(), "event", "fetchOrderAccruals - http.Get error", "url", url)
 			return "", 0, err
 		}
+		defer response.Body.Close()
 
 		if response.StatusCode == http.StatusTooManyRequests {
 			waitTime := response.Header.Get("Retry-After")
