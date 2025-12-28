@@ -47,13 +47,6 @@ func prepareMux() (*sql.DB, http.Handler, error) {
 		log.Fatal(err)
 	}
 
-	defer func(myLogger *zap.Logger) {
-		err := myLogger.Sync()
-		if err != nil {
-
-		}
-	}(myLogger)
-
 	flags := parseFlags()
 
 	sugarLogger := myLogger.Sugar()
@@ -145,6 +138,7 @@ func TestRegister(t *testing.T) {
 
 			res := w.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
+			res.Body.Close()
 		})
 	}
 }
@@ -193,6 +187,7 @@ func TestRegisterLogin(t *testing.T) {
 
 			res := w.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
+			res.Body.Close()
 		})
 	}
 }
@@ -309,6 +304,7 @@ func TestOrders(t *testing.T) {
 
 			res := w.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
+			res.Body.Close()
 
 			if i == 0 {
 				cookies := res.Cookies()
@@ -321,5 +317,21 @@ func TestOrders(t *testing.T) {
 		})
 
 		i++
+	}
+}
+
+func TestFinally(t *testing.T) {
+	if globalDB != nil {
+		err := globalDB.Close()
+		if err != nil {
+			globalLogger.Errorw(err.Error(), "event", "закрытие базы данных")
+		}
+	}
+
+	if globalLogger != nil {
+		err := globalLogger.Sync()
+		if err != nil {
+			log.Println("Ошибка при синхронизации логгера:", err)
+		}
 	}
 }
