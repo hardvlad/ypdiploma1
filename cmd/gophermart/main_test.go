@@ -39,6 +39,7 @@ var (
 	globalDB     *sql.DB
 	globalMux    http.Handler
 	globalLogger *zap.SugaredLogger
+	globalZap    *zap.Logger
 )
 
 func prepareMux() (*sql.DB, http.Handler, error) {
@@ -46,6 +47,8 @@ func prepareMux() (*sql.DB, http.Handler, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	globalZap = myLogger
 
 	flags := parseFlags()
 
@@ -228,6 +231,15 @@ func TestOrders(t *testing.T) {
 			},
 		},
 		{
+			name:   "order get balance no cookie #1",
+			method: http.MethodGet,
+			target: "/api/user/balance",
+			body:   "",
+			want: want{
+				code: http.StatusUnauthorized,
+			},
+		},
+		{
 			name:   "order get no orders #1",
 			method: http.MethodGet,
 			target: "/api/user/orders",
@@ -290,7 +302,7 @@ func TestOrders(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(test.method, test.target, strings.NewReader(test.body))
-			if i > 1 {
+			if i > 2 {
 				cookie := &http.Cookie{
 					Name:  "yp_diploma_one_token",
 					Value: setCookie,
@@ -325,13 +337,6 @@ func TestFinally(t *testing.T) {
 		err := globalDB.Close()
 		if err != nil {
 			globalLogger.Errorw(err.Error(), "event", "закрытие базы данных")
-		}
-	}
-
-	if globalLogger != nil {
-		err := globalLogger.Sync()
-		if err != nil {
-			log.Println("Ошибка при синхронизации логгера:", err)
 		}
 	}
 }
