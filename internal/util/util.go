@@ -16,6 +16,35 @@ func GenerateRandomString(length int) string {
 	return string(b[:])
 }
 
+func GenerateRandomNumberString(length int) string {
+	charset := "0123456789"
+	b := make([]byte, length)
+	for i := 0; i < length; i++ {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b[:])
+}
+
+func DigitString(minLen, maxLen int) string {
+	var letters = "0123456789"
+
+	slen := rand.Intn(maxLen-minLen) + minLen
+
+	s := make([]byte, 0, slen)
+	i := 0
+	for len(s) < slen {
+		idx := rand.Intn(len(letters) - 1)
+		char := letters[idx]
+		if i == 0 && '0' == char {
+			continue
+		}
+		s = append(s, char)
+		i++
+	}
+
+	return string(s)
+}
+
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(bytes), err
