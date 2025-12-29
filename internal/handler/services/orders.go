@@ -1,3 +1,5 @@
+// Package services содержит обработчики для создания заказа для получения начислений
+// и получения списка заказов пользователя
 package services
 
 import (
@@ -8,9 +10,12 @@ import (
 	"github.com/hardvlad/ypdiploma1/internal/util"
 )
 
+// createPostOrdersHandler создает обработчик для сохранения заказа
+// для дальнейшей обработки воркером - получение начислений из сторонней системы
 func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// номер заказа передается в теле - получаем его
 		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
@@ -21,6 +26,7 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 			return
 		}
 
+		// получаем userID из контекста
 		userID, ok := r.Context().Value(UserIDKey).(int)
 		if !ok {
 			writeResponse(w, r, commonResponse{
@@ -30,6 +36,7 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 			})
 		}
 
+		// проверяем номер заказа по алгоритму Луна - последняя цифра - контрольная сумма
 		orderNumber := string(bodyBytes)
 		if !util.CheckNumberLuhn(orderNumber) {
 			writeResponse(w, r, commonResponse{
@@ -40,6 +47,7 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 			return
 		}
 
+		// проверяем есть ли уже заказ с таким номером в базе данных и получаем пользователя, создавшего заказ
 		existingOrderUserID, err := data.Store.GetUserIDOfOrder(orderNumber)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
@@ -50,16 +58,17 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 			return
 		}
 
+		// если заказ уже существует - выводим статусы
 		if existingOrderUserID != 0 {
 			if existingOrderUserID == userID {
 				writeResponse(w, r, commonResponse{
-					isError: true,
+					isError: false,
 					message: http.StatusText(http.StatusOK),
 					code:    http.StatusOK,
 				})
 			} else {
 				writeResponse(w, r, commonResponse{
-					isError: true,
+					isError: false,
 					message: http.StatusText(http.StatusConflict),
 					code:    http.StatusConflict,
 				})
@@ -67,6 +76,7 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 			return
 		}
 
+		// сохраняем новый заказ в базе данных
 		err = data.Store.InsertNewOrder(orderNumber, userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
@@ -77,6 +87,7 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 			return
 		}
 
+		// отправляем номер заказа в канал для дальнейшей обработки воркером
 		ch <- orderNumber
 
 		writeResponse(w, r, commonResponse{
@@ -87,9 +98,11 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 	}
 }
 
+// createGetOrdersHandler создает обработчик для получения списка заказов пользователя
 func createGetOrdersHandler(data Handlers) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// получаем userID из контекста
 		userID, ok := r.Context().Value(UserIDKey).(int)
 		if !ok {
 			writeResponse(w, r, commonResponse{
@@ -99,6 +112,7 @@ func createGetOrdersHandler(data Handlers) http.HandlerFunc {
 			})
 		}
 
+		// получаем список заказов из базы данных
 		orders, err := data.Store.GetOrders(userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
@@ -109,6 +123,7 @@ func createGetOrdersHandler(data Handlers) http.HandlerFunc {
 			return
 		}
 
+		// если список заказов пустой - выводим StatusNoContent
 		if len(orders) == 0 {
 			writeResponse(w, r, commonResponse{
 				isError: true,

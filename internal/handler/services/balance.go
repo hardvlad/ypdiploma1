@@ -1,3 +1,5 @@
+// Package services содержит методы для получения баланса пользователя,
+// списка списаний и создание списания
 package services
 
 import (
@@ -7,19 +9,23 @@ import (
 	"github.com/hardvlad/ypdiploma1/internal/util"
 )
 
+// GetBalanceResponse структура, описывающая формат ответа на запрос баланса
 type GetBalanceResponse struct {
 	Current   float64 `json:"current"`
 	Withdrawn float64 `json:"withdrawn"`
 }
 
+// WithdrawRequest структура, описывающая формат запроса на списание
 type WithdrawRequest struct {
 	OrderNumber string  `json:"order"`
 	Sum         float64 `json:"sum"`
 }
 
+// createGetBalanceHandler - создание обработчика метода получения баланса
 func createGetBalanceHandler(data Handlers) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// получаем userID из контекста
 		userID, ok := r.Context().Value(UserIDKey).(int)
 		if !ok {
 			writeResponse(w, r, commonResponse{
@@ -29,6 +35,7 @@ func createGetBalanceHandler(data Handlers) http.HandlerFunc {
 			})
 		}
 
+		// получаем баланс пользователя из базы
 		var balance GetBalanceResponse
 		var err error
 		balance.Current, balance.Withdrawn, err = data.Store.GetUserBalance(userID)
@@ -49,9 +56,11 @@ func createGetBalanceHandler(data Handlers) http.HandlerFunc {
 	}
 }
 
+// createWithdrawHandler - создание обработчика метода списания
 func createWithdrawHandler(data Handlers) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// получаем userID из контекста
 		userID, ok := r.Context().Value(UserIDKey).(int)
 		if !ok {
 			writeResponse(w, r, commonResponse{
@@ -63,7 +72,9 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 
 		var requestData WithdrawRequest
 
+		// попытка разобрать запрос в структуру
 		dec := json.NewDecoder(r.Body)
+		// если попытка неудачна - выводим StatusBadRequest и прекращаем обработку
 		if err := dec.Decode(&requestData); err != nil {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -73,6 +84,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 			return
 		}
 
+		// проверяем ограничения на данные в запросе
 		if requestData.OrderNumber == "" || requestData.Sum <= 0 {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -82,6 +94,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 			return
 		}
 
+		// проверяем номер заказа по алгоритму Луна - последняя цифра - контрольная сумма
 		if !util.CheckNumberLuhn(requestData.OrderNumber) {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -91,6 +104,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 			return
 		}
 
+		// получаем баланс из базы данных
 		accrued, withdrawn, err := data.Store.GetUserBalance(userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
@@ -103,6 +117,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 
 		balance := accrued - withdrawn
 
+		// если баланс меньше суммы списания - выводим ошибку
 		if balance < requestData.Sum {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -112,6 +127,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 			return
 		}
 
+		// сохраняем списание в базе данных
 		err = data.Store.InsertWithdrawal(requestData.OrderNumber, requestData.Sum, userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
@@ -130,9 +146,11 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 	}
 }
 
+// createGetWithdrawalsHandler - создание обработчика метода для получения списка списаний
 func createGetWithdrawalsHandler(data Handlers) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// получаем userID из контекста
 		userID, ok := r.Context().Value(UserIDKey).(int)
 		if !ok {
 			writeResponse(w, r, commonResponse{
@@ -142,6 +160,7 @@ func createGetWithdrawalsHandler(data Handlers) http.HandlerFunc {
 			})
 		}
 
+		// получаем список списаний из базы данных
 		withdrawals, err := data.Store.GetWithdrawals(userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{

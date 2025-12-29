@@ -1,3 +1,4 @@
+// Package server модуль запуска сервиса
 package server
 
 import (

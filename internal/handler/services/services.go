@@ -1,3 +1,4 @@
+// Package services содержит типы данных и сервисы для обработки запросов
 package services
 
 import (
@@ -15,8 +16,10 @@ import (
 
 type contextKey string
 
+// UserIDKey поле в контексте запроса для UserID
 const UserIDKey contextKey = "user_id"
 
+// Handlers структура данных для хранения конфигурации и объектов
 type Handlers struct {
 	Conf   *config.Config
 	Store  repository.StorageInterface
@@ -36,6 +39,7 @@ type AccrualResponse struct {
 	Accrual float64 `json:"accrual"`
 }
 
+// NewServices создание обработчиков запросов
 func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger) {
 	handlersData := Handlers{
 		Conf:   conf,
@@ -58,6 +62,7 @@ func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInte
 
 }
 
+// accrualsWorker воркер, слушающий канал, в который поступают номера заказов для обработки
 func accrualsWorker(data Handlers, ch chan string) {
 	for orderNumber := range ch {
 		err := processOrderAccruals(data, orderNumber)
@@ -67,6 +72,7 @@ func accrualsWorker(data Handlers, ch chan string) {
 	}
 }
 
+// processOrderAccruals функция получения статуса заказа и начислений бонусов из внешнего сервиса
 func processOrderAccruals(data Handlers, number string) error {
 	_ = data.Store.SetOrderStatusAccrual(number, "PROCESSING", 0)
 
@@ -83,6 +89,8 @@ func processOrderAccruals(data Handlers, number string) error {
 	return data.Store.SetOrderStatusAccrual(number, status, accrual)
 }
 
+// fetchOrderAccruals функция, в которой происходит обращение к внешнему сервису начислений
+// и ожидающая окончание начислений, периодически запрашивая внешний сервис
 func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 	var status string
 	var accrual float64
@@ -95,8 +103,6 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 			return "", 0, err
 		}
 		defer response.Body.Close()
-
-		data.Logger.Infow("Got accruals response", "url", url, "code", response.StatusCode)
 
 		if response.StatusCode == http.StatusTooManyRequests {
 			waitTime := response.Header.Get("Retry-After")
@@ -124,8 +130,6 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 				continue
 			}
 
-			data.Logger.Infow("Got accruals response data", "url", url, "status", resp.Status, "accrual", resp.Accrual)
-
 			if resp.Status == "INVALID" || resp.Status == "PROCESSED" {
 				accrual = resp.Accrual
 				status = resp.Status
@@ -136,6 +140,7 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 	return status, accrual, nil
 }
 
+// writeResponse функция, выводящая ответ
 func writeResponse(w http.ResponseWriter, r *http.Request, resp commonResponse) {
 	if resp.isError {
 		http.Error(w, resp.message, resp.code)

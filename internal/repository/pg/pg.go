@@ -1,3 +1,4 @@
+// Package pg реализация интерфейса хранения данных для базы данных Postgres
 package pg
 
 import (
@@ -10,16 +11,19 @@ import (
 	"go.uber.org/zap"
 )
 
+// Storage тип, содержащий данные, необходимые для работы интерфейса и логирования
 type Storage struct {
 	DBConn *sql.DB
 	mu     sync.RWMutex
 	logger *zap.SugaredLogger
 }
 
+// NewPGStorage создание объекта хранилища Postgres
 func NewPGStorage(dbConn *sql.DB, logger *zap.SugaredLogger) *Storage {
 	return &Storage{DBConn: dbConn, logger: logger}
 }
 
+// GetUserIDByLogin функция получение ID пользователя по его логину
 func (s *Storage) GetUserIDByLogin(login string) (int, error) {
 	row := s.DBConn.QueryRowContext(context.Background(), "SELECT id from users where login = $1", login)
 
@@ -34,6 +38,7 @@ func (s *Storage) GetUserIDByLogin(login string) (int, error) {
 	return userID, nil
 }
 
+// CreateUser функция создание пользователя по его логину и хешу пароля
 func (s *Storage) CreateUser(login string, pwdHash string) (int, error) {
 	var userID int
 	err := s.DBConn.QueryRowContext(
@@ -50,6 +55,7 @@ func (s *Storage) CreateUser(login string, pwdHash string) (int, error) {
 	return userID, nil
 }
 
+// GetUserIDPasswordHashByLogin функция получение ID пользователя и хеша пароля по его логину
 func (s *Storage) GetUserIDPasswordHashByLogin(login string) (int, string, error) {
 	row := s.DBConn.QueryRowContext(context.Background(), "SELECT id, password_hash from users where login = $1", login)
 
@@ -65,6 +71,7 @@ func (s *Storage) GetUserIDPasswordHashByLogin(login string) (int, string, error
 	return userID, pwdHash, nil
 }
 
+// GetUserIDOfOrder функция получение ID пользователя в заказе
 func (s *Storage) GetUserIDOfOrder(orderNumber string) (int, error) {
 	row := s.DBConn.QueryRowContext(context.Background(), "SELECT user_id from orders where number = $1", orderNumber)
 
@@ -79,11 +86,13 @@ func (s *Storage) GetUserIDOfOrder(orderNumber string) (int, error) {
 	return userID, nil
 }
 
+// InsertNewOrder функция сохранения в базе данных нового заказа
 func (s *Storage) InsertNewOrder(orderNumber string, userID int) error {
 	_, err := s.DBConn.ExecContext(context.Background(), "INSERT INTO orders (number, user_id, status_id) VALUES ($1, $2, 1)", orderNumber, userID)
 	return err
 }
 
+// GetOrders функция получения заказов пользователя
 func (s *Storage) GetOrders(userID int) ([]repository.OrdersResult, error) {
 	rows, err := s.DBConn.Query("SELECT o.number, os.name, o.accrual, o.uploaded_at FROM orders o JOIN statuses os ON o.status_id = os.id WHERE o.user_id = $1 ORDER BY o.uploaded_at DESC", userID)
 	if err != nil {
@@ -107,6 +116,7 @@ func (s *Storage) GetOrders(userID int) ([]repository.OrdersResult, error) {
 	return orders, nil
 }
 
+// GetUserBalance функция получения сумм начислений и списаний пользователя
 func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
 	row := s.DBConn.QueryRowContext(context.Background(), "SELECT (select sum(amount) from withdrawals where user_id=users.id), (select sum(accrual) from orders where user_id=users.id) FROM users WHERE id = $1", userID)
 	var withdrawals sql.NullFloat64
@@ -131,11 +141,13 @@ func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
 	return accrualsSum, withdrawalsSum, nil
 }
 
+// InsertWithdrawal функция сохранения в базе данных списания баланса пользователя
 func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) error {
 	_, err := s.DBConn.ExecContext(context.Background(), "INSERT INTO withdrawals (number, amount, user_id) VALUES ($1, $2, $3)", orderNumber, sum, userID)
 	return err
 }
 
+// GetWithdrawals функция получения списка списаний пользователя
 func (s *Storage) GetWithdrawals(userID int) ([]repository.WithdrawalsResult, error) {
 	rows, err := s.DBConn.QueryContext(context.Background(), "SELECT number, amount, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC", userID)
 	if err != nil {
@@ -159,6 +171,7 @@ func (s *Storage) GetWithdrawals(userID int) ([]repository.WithdrawalsResult, er
 	return withdrawals, nil
 }
 
+// SetOrderStatusAccrual функция установления статуса заказа и суммы начислений
 func (s *Storage) SetOrderStatusAccrual(orderNumber string, status string, accrual float64) error {
 	var statusID int
 	err := s.DBConn.QueryRowContext(context.Background(), "SELECT id FROM statuses WHERE name = $1", status).Scan(&statusID)

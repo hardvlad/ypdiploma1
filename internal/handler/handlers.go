@@ -1,3 +1,4 @@
+// Package handler создает хендлер для обработки запросов
 package handler
 
 import (
@@ -11,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// NewHandlers получение основного хендлера для обработки запросов
 func NewHandlers(conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger) http.Handler {
 	mux := chi.NewRouter()
 	services.NewServices(mux, conf, store, sugarLogger)

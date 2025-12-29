@@ -1,3 +1,4 @@
+// Package logger содержит типы данных и middleware для логирования запросов и ответов
 package logger
 
 import (
@@ -30,10 +31,12 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode // захватываем код статуса
 }
 
+// InitLogger инициализация логгера zap
 func InitLogger() (*zap.Logger, error) {
 	return zap.NewDevelopment()
 }
 
+// WithLogging создание middleware для логирования запросов и ответов
 func WithLogging(h http.Handler, sugarLogger *zap.SugaredLogger) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

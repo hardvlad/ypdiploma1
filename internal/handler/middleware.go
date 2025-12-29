@@ -1,3 +1,4 @@
+// Package handler содержит в себе типы данных и middleware для обработки HTTP запросов
 package handler
 
 import (
@@ -39,6 +40,7 @@ func (w *compressWriter) WriteHeader(statusCode int) {
 	w.setStatusCode = statusCode
 }
 
+// ResponseCompressHandle возвращает хендлер middleware для сжатия ответов
 func ResponseCompressHandle(next http.Handler, sugarLogger *zap.SugaredLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		acceptEncoding := r.Header.Get("Accept-Encoding")
@@ -73,6 +75,7 @@ func ResponseCompressHandle(next http.Handler, sugarLogger *zap.SugaredLogger) h
 	})
 }
 
+// RequestDecompressHandle возвращает хендлер middleware для декомпрессии запросов
 func RequestDecompressHandle(next http.Handler, sugarLogger *zap.SugaredLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -110,17 +113,21 @@ func RequestDecompressHandle(next http.Handler, sugarLogger *zap.SugaredLogger) 
 	})
 }
 
+// AuthorizationMiddleware возвращает хендлер middleware для проверки авторизации
 func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, cookieName string, secretKey string, db *sql.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		// пути, требующие авторизации
 		authRoutes := []string{"/api/user/orders", "/api/user/balance", "/api/user/balance/withdraw", "/api/user/withdrawals"}
+		// если авторизация не нужна - пропускаем обработку
 		if !slices.Contains(authRoutes, r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
 
+		// если не заданы параметры авторизации - выдаем StatusUnauthorized
 		if cookieName == "" || secretKey == "" || db == nil {
-			next.ServeHTTP(w, r)
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
@@ -129,6 +136,7 @@ func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, 
 		if err != nil {
 		} else {
 			uid, err := auth.GetUserID(c.Value, secretKey)
+			// если возникла ошибка при разборе JWT токена - выдаем StatusUnauthorized
 			if err != nil {
 				sugarLogger.Errorw(err.Error(), "event", "парсинг токена из куки", "cookie", c.Value)
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -138,6 +146,7 @@ func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, 
 			userID = uid
 		}
 
+		// если удалось определить ID пользователя - выдаем StatusUnauthorized
 		if userID == 0 {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return

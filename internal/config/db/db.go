@@ -1,3 +1,4 @@
+// Package db конфигурация для базы данных и подключение к ней
 package db
 
 import (
@@ -7,16 +8,20 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// Config тип, описывающий структуру конфига базы данных
 type Config struct {
 	Dsn string
 }
 
+// NewConfig создание и наполнение структуры конфига базы данных
 func NewConfig(dsn string) *Config {
 	return &Config{
 		Dsn: dsn,
 	}
 }
 
+// InitDB подключение к базе данных, используя конфиг,
+// возвращает или подключение к базе данных или ошибку
 func (c *Config) InitDB() (*sql.DB, error) {
 
 	if c.Dsn == "" {
