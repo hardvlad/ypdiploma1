@@ -143,23 +143,30 @@ func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
 
 // InsertWithdrawal функция сохранения в базе данных списания баланса пользователя
 func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) error {
-	sql := `
-	DECLARE 
-		accrualSum numeric(10,2);
-		withdrawalSum numeric(10,2);
-		balanceSum numeric(10,2);
-	BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-	SELECT (select sum(amount) from withdrawals where user_id=users.id), (select sum(accrual) from orders where user_id=users.id) INTO withdrawalSum, accrualSum FROM users WHERE id = $1
-	SET balanceSum = accrualSum - withdrawalSum;
-    
-    IF balanceSum < $2 THEN
-        RAISE EXCEPTION 'balance is not enough';
-    END IF;
+	sqlStmt := `
+    INSERT INTO withdrawals (number, amount, user_id) 
+    select $3, $2, id from users
+    where id = $1 and  coalesce((select sum(accrual) from orders where user_id=users.id),0) -
+                          coalesce((select sum(amount) from withdrawals where user_id=users.id),0) >= $2;
+`
+	tx, err := s.DBConn.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
 
-	INSERT INTO withdrawals (number, amount, user_id) VALUES ($3, $4, $5)
-COMMIT;`
-	_, err := s.DBConn.ExecContext(context.Background(), sql, userID, sum, orderNumber, sum, userID)
-	return err
+	stmt, err := tx.PrepareContext(context.Background(), sqlStmt)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.ExecContext(context.Background(), userID, sum, orderNumber); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // GetWithdrawals функция получения списка списаний пользователя

@@ -130,6 +130,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 		// сохраняем списание в базе данных
 		err = data.Store.InsertWithdrawal(requestData.OrderNumber, requestData.Sum, userID)
 		if err != nil {
+			data.Logger.Debugw(err.Error(), "event", "insert withdrawal", "userID", userID, "number", requestData.OrderNumber, "sum", requestData.Sum)
 			writeResponse(w, r, commonResponse{
 				isError: true,
 				message: http.StatusText(http.StatusInternalServerError),
