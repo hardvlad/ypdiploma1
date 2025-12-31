@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/hardvlad/ypdiploma1/internal/retry"
 )
 
 func CreateWorkers(numWorkers int, data Handlers, ch chan string, wg *sync.WaitGroup) {
@@ -52,7 +54,7 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 
 	for {
 		data.Logger.Infow("Getting accruals", "url", url)
-		response, err := http.Get(url)
+		response, err := retry.Retry(3, 2*time.Second, func() (*http.Response, error) { return http.Get(url) })
 		if err != nil {
 			data.Logger.Debugw(err.Error(), "event", "fetchOrderAccruals - http.Get error", "url", url)
 			return "", 0, err
