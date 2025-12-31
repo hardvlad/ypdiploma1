@@ -14,9 +14,13 @@ import (
 
 	"github.com/andybalholm/brotli"
 	"github.com/hardvlad/ypdiploma1/internal/auth"
-	"github.com/hardvlad/ypdiploma1/internal/handler/services"
 	"go.uber.org/zap"
 )
+
+type contextKey string
+
+// UserIDKey поле в контексте запроса для UserID
+const userIDKey contextKey = "user_id"
 
 type compressWriter struct {
 	http.ResponseWriter
@@ -152,7 +156,12 @@ func AuthorizationMiddleware(next http.Handler, sugarLogger *zap.SugaredLogger, 
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), services.UserIDKey, userID)
+		ctx := context.WithValue(r.Context(), userIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func getUserIDFromRequest(r *http.Request) (userID int, ok bool) {
+	userID, ok = r.Context().Value(userIDKey).(int)
+	return userID, ok
 }

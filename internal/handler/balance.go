@@ -1,6 +1,6 @@
-// Package services содержит методы для получения баланса пользователя,
+// Package handler содержит методы для получения баланса пользователя,
 // списка списаний и создание списания
-package services
+package handler
 
 import (
 	"encoding/json"
@@ -26,7 +26,7 @@ func createGetBalanceHandler(data Handlers) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// получаем userID из контекста
-		userID, ok := r.Context().Value(UserIDKey).(int)
+		userID, ok := getUserIDFromRequest(r)
 		if !ok {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -61,7 +61,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// получаем userID из контекста
-		userID, ok := r.Context().Value(UserIDKey).(int)
+		userID, ok := r.Context().Value(userIDKey).(int)
 		if !ok {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -151,7 +151,7 @@ func createGetWithdrawalsHandler(data Handlers) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// получаем userID из контекста
-		userID, ok := r.Context().Value(UserIDKey).(int)
+		userID, ok := getUserIDFromRequest(r)
 		if !ok {
 			writeResponse(w, r, commonResponse{
 				isError: true,

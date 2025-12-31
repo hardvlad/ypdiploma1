@@ -1,5 +1,5 @@
-// Package services содержит обработчик входа пользователя по имени и паролю
-package services
+// Package handler содержит обработчик входа пользователя по имени и паролю
+package handler
 
 import (
 	"encoding/json"

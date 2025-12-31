@@ -1,5 +1,5 @@
-// Package services содержит реализацию метода регистрации пользователя
-package services
+// Package handler содержит реализацию метода регистрации пользователя
+package handler
 
 import (
 	"encoding/json"

@@ -1,11 +1,12 @@
-// Package services содержит типы данных и сервисы для обработки запросов
-package services
+// Package handler содержит типы данных и сервисы для обработки запросов
+package handler
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -13,11 +14,6 @@ import (
 	"github.com/hardvlad/ypdiploma1/internal/repository"
 	"go.uber.org/zap"
 )
-
-type contextKey string
-
-// UserIDKey поле в контексте запроса для UserID
-const UserIDKey contextKey = "user_id"
 
 // Handlers структура данных для хранения конфигурации и объектов
 type Handlers struct {
@@ -40,15 +36,14 @@ type AccrualResponse struct {
 }
 
 // NewServices создание обработчиков запросов
-func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger) {
+func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger, ch chan string, wg *sync.WaitGroup, numWorkers int) {
 	handlersData := Handlers{
 		Conf:   conf,
 		Store:  store,
 		Logger: sugarLogger,
 	}
 
-	ch := make(chan string, 100)
-	go accrualsWorker(handlersData, ch)
+	CreateWorkers(numWorkers, handlersData, ch, wg)
 
 	mux.Post(`/api/user/register`, createRegisterHandler(handlersData))
 	mux.Post(`/api/user/login`, createLoginHandler(handlersData))
@@ -62,14 +57,22 @@ func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInte
 
 }
 
+func CreateWorkers(numWorkers int, data Handlers, ch chan string, wg *sync.WaitGroup) {
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go accrualsWorker(i, data, ch, wg)
+	}
+}
+
 // accrualsWorker воркер, слушающий канал, в который поступают номера заказов для обработки
-func accrualsWorker(data Handlers, ch chan string) {
+func accrualsWorker(id int, data Handlers, ch chan string, wg *sync.WaitGroup) {
 	for orderNumber := range ch {
 		err := processOrderAccruals(data, orderNumber)
 		if err != nil {
-			data.Logger.Errorw("accrualsWorker: processOrderAccruals error", "orderNumber", orderNumber, "error", err)
+			data.Logger.Errorw("accrualsWorker: processOrderAccruals error", "id", id, "orderNumber", orderNumber, "error", err)
 		}
 	}
+	wg.Done()
 }
 
 // processOrderAccruals функция получения статуса заказа и начислений бонусов из внешнего сервиса

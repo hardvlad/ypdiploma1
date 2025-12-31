@@ -1,6 +1,6 @@
-// Package services содержит обработчики для создания заказа для получения начислений
+// Package handler содержит обработчики для создания заказа для получения начислений
 // и получения списка заказов пользователя
-package services
+package handler
 
 import (
 	"encoding/json"
@@ -27,7 +27,7 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 		}
 
 		// получаем userID из контекста
-		userID, ok := r.Context().Value(UserIDKey).(int)
+		userID, ok := getUserIDFromRequest(r)
 		if !ok {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -103,7 +103,7 @@ func createGetOrdersHandler(data Handlers) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// получаем userID из контекста
-		userID, ok := r.Context().Value(UserIDKey).(int)
+		userID, ok := getUserIDFromRequest(r)
 		if !ok {
 			writeResponse(w, r, commonResponse{
 				isError: true,

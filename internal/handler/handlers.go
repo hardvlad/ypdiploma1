@@ -3,9 +3,9 @@ package handler
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/hardvlad/ypdiploma1/internal/config"
-	"github.com/hardvlad/ypdiploma1/internal/handler/services"
 	"github.com/hardvlad/ypdiploma1/internal/repository"
 	"go.uber.org/zap"
 
@@ -13,8 +13,8 @@ import (
 )
 
 // NewHandlers получение основного хендлера для обработки запросов
-func NewHandlers(conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger) http.Handler {
+func NewHandlers(conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger, ch chan string, wg *sync.WaitGroup, numWorkers int) http.Handler {
 	mux := chi.NewRouter()
-	services.NewServices(mux, conf, store, sugarLogger)
+	NewServices(mux, conf, store, sugarLogger, ch, wg, numWorkers)
 	return mux
 }

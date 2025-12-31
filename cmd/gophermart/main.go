@@ -4,6 +4,7 @@ package main
 import (
 	"errors"
 	"log"
+	"sync"
 
 	"github.com/hardvlad/ypdiploma1/internal/config"
 	"github.com/hardvlad/ypdiploma1/internal/handler"
@@ -63,6 +64,10 @@ func main() {
 		sugarLogger.Fatalw(err.Error(), "event", "применение миграции")
 	}
 
+	var wg sync.WaitGroup
+	numWorkers := 3
+	ch := make(chan string, numWorkers)
+
 	// старт сервера на адресе flags.RunAddress
 	err = server.StartServer(flags.RunAddress,
 		// с логированием
@@ -74,7 +79,7 @@ func main() {
 					// с поддержкой сжатия ответов
 					handler.ResponseCompressHandle(
 						// создание обработчика запросов
-						handler.NewHandlers(conf, store, sugarLogger),
+						handler.NewHandlers(conf, store, sugarLogger, ch, &wg, numWorkers),
 						sugarLogger,
 					),
 					sugarLogger,
@@ -88,4 +93,7 @@ func main() {
 	if err != nil {
 		sugarLogger.Fatalw(err.Error(), "event", "start server")
 	}
+
+	close(ch)
+	wg.Wait()
 }
