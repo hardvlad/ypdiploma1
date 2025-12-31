@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hardvlad/ypdiploma1/internal/config"
@@ -35,11 +36,13 @@ type test struct {
 }
 
 var (
-	globalFlags  programFlags
-	globalDB     *sql.DB
-	globalMux    http.Handler
-	globalLogger *zap.SugaredLogger
-	globalZap    *zap.Logger
+	globalFlags     programFlags
+	globalDB        *sql.DB
+	globalMux       http.Handler
+	globalLogger    *zap.SugaredLogger
+	globalZap       *zap.Logger
+	globalWaitGroup *sync.WaitGroup
+	globalChannel   chan string
 )
 
 func prepareMux() (*sql.DB, http.Handler, error) {
@@ -65,12 +68,17 @@ func prepareMux() (*sql.DB, http.Handler, error) {
 		return nil, nil, err
 	}
 
+	var wg sync.WaitGroup
+	globalWaitGroup = &wg
+	numWorkers := 3
+	globalChannel := make(chan string, numWorkers)
+
 	store = pg.NewPGStorage(db, sugarLogger)
 	mux := logger.WithLogging(
 		handler.AuthorizationMiddleware(
 			handler.RequestDecompressHandle(
 				handler.ResponseCompressHandle(
-					handler.NewHandlers(conf, store, sugarLogger),
+					handler.NewHandlers(conf, store, sugarLogger, globalChannel, &wg, numWorkers),
 					sugarLogger,
 				),
 				sugarLogger,
@@ -339,4 +347,6 @@ func TestFinally(t *testing.T) {
 			globalLogger.Errorw(err.Error(), "event", "закрытие базы данных")
 		}
 	}
+	close(globalChannel)
+	globalWaitGroup.Wait()
 }
