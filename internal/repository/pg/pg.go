@@ -161,12 +161,27 @@ func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) 
 	}
 	defer stmt.Close()
 
-	if _, err := stmt.ExecContext(context.Background(), userID, sum, orderNumber); err != nil {
+	res, err := stmt.ExecContext(context.Background(), userID, sum, orderNumber)
+	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
 
 // GetWithdrawals функция получения списка списаний пользователя
