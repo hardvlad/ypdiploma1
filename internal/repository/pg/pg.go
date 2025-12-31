@@ -143,7 +143,22 @@ func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
 
 // InsertWithdrawal функция сохранения в базе данных списания баланса пользователя
 func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) error {
-	_, err := s.DBConn.ExecContext(context.Background(), "INSERT INTO withdrawals (number, amount, user_id) VALUES ($1, $2, $3)", orderNumber, sum, userID)
+	sql := `
+	DECLARE 
+		accrualSum numeric(10,2);
+		withdrawalSum numeric(10,2);
+		balanceSum numeric(10,2);
+	BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+	SELECT (select sum(amount) from withdrawals where user_id=users.id), (select sum(accrual) from orders where user_id=users.id) INTO withdrawalSum, accrualSum FROM users WHERE id = $1
+	SET balanceSum = accrualSum - withdrawalSum;
+    
+    IF balanceSum < $2 THEN
+        RAISE EXCEPTION 'balance is not enough';
+    END IF;
+
+	INSERT INTO withdrawals (number, amount, user_id) VALUES ($3, $4, $5)
+COMMIT;`
+	_, err := s.DBConn.ExecContext(context.Background(), sql, userID, sum, orderNumber, sum, userID)
 	return err
 }
 
