@@ -44,11 +44,14 @@ func CheckAndPause() {
 		waitTime := time.Until(resumeTime)
 		if waitTime > 0 {
 			isRateLimitedMux.Unlock()
-			fmt.Printf("Still rate limited. Waiting for %v...\n", waitTime)
-			time.Sleep(waitTime)
-			isRateLimitedMux.Lock()
+			select {
+			case <-time.After(waitTime):
+				isRateLimitedMux.Lock()
+				isRateLimited = false
+				isRateLimitedMux.Unlock()
+				return
+			}
 		}
-		isRateLimited = false
 	}
 	isRateLimitedMux.Unlock()
 }
