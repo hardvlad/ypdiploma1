@@ -62,14 +62,6 @@ func fetchOrderAccruals(data Handlers, url string) (string, float64, error) {
 
 		if response.StatusCode == http.StatusTooManyRequests {
 			handle429(response, data)
-			waitTime := response.Header.Get("Retry-After")
-			data.Logger.Debugw("fetchOrderAccruals - received 429 Too Many Requests", "url", url, "waitTime", waitTime)
-			waitSeconds, err := strconv.Atoi(waitTime)
-			if err != nil {
-				waitSeconds = 1
-			}
-
-			time.Sleep(time.Second * time.Duration(waitSeconds))
 			continue
 		}
 
