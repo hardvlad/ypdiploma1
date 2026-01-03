@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
@@ -78,7 +79,7 @@ func prepareMux() (*sql.DB, http.Handler, error) {
 		handler.AuthorizationMiddleware(
 			handler.RequestDecompressHandle(
 				handler.ResponseCompressHandle(
-					handler.NewHandlers(conf, store, sugarLogger, globalChannel, &wg, numWorkers),
+					handler.NewHandlers(context.Background(), conf, store, sugarLogger, globalChannel, &wg, numWorkers),
 					sugarLogger,
 				),
 				sugarLogger,
