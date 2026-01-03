@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -13,8 +14,8 @@ import (
 )
 
 // NewHandlers получение основного хендлера для обработки запросов
-func NewHandlers(conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger, ch chan string, wg *sync.WaitGroup, numWorkers int) http.Handler {
+func NewHandlers(ctx context.Context, conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger, ch chan string, wg *sync.WaitGroup, numWorkers int) http.Handler {
 	mux := chi.NewRouter()
-	NewServices(mux, conf, store, sugarLogger, ch, wg, numWorkers)
+	NewServices(ctx, mux, conf, store, sugarLogger, ch, wg, numWorkers)
 	return mux
 }

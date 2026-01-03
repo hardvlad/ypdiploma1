@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -10,22 +11,28 @@ import (
 	"github.com/hardvlad/ypdiploma1/internal/retry"
 )
 
-func CreateWorkers(numWorkers int, data Handlers, ch chan string, wg *sync.WaitGroup) {
+func CreateWorkers(ctx context.Context, numWorkers int, data Handlers, ch chan string, wg *sync.WaitGroup) {
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go accrualsWorker(i, data, ch, wg)
+		go accrualsWorker(ctx, i, data, ch, wg)
 	}
 }
 
 // accrualsWorker воркер, слушающий канал, в который поступают номера заказов для обработки
-func accrualsWorker(id int, data Handlers, ch chan string, wg *sync.WaitGroup) {
-	for orderNumber := range ch {
-		err := processOrderAccruals(data, orderNumber)
-		if err != nil {
-			data.Logger.Errorw("accrualsWorker: processOrderAccruals error", "id", id, "orderNumber", orderNumber, "error", err)
+func accrualsWorker(ctx context.Context, id int, data Handlers, ch chan string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for {
+		select {
+		case orderNumber := <-ch:
+			err := processOrderAccruals(data, orderNumber)
+			if err != nil {
+				data.Logger.Errorw("accrualsWorker: processOrderAccruals error", "id", id, "orderNumber", orderNumber, "error", err)
+			}
+		case <-ctx.Done():
+			data.Logger.Infow("accrualsWorker: shutting down", "id", id)
+			return
 		}
 	}
-	wg.Done()
 }
 
 // processOrderAccruals функция получения статуса заказа и начислений бонусов из внешнего сервиса

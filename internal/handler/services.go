@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -32,14 +33,14 @@ type AccrualResponse struct {
 }
 
 // NewServices создание обработчиков запросов
-func NewServices(mux *chi.Mux, conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger, ch chan string, wg *sync.WaitGroup, numWorkers int) {
+func NewServices(ctx context.Context, mux *chi.Mux, conf *config.Config, store repository.StorageInterface, sugarLogger *zap.SugaredLogger, ch chan string, wg *sync.WaitGroup, numWorkers int) {
 	handlersData := Handlers{
 		Conf:   conf,
 		Store:  store,
 		Logger: sugarLogger,
 	}
 
-	CreateWorkers(numWorkers, handlersData, ch, wg)
+	CreateWorkers(ctx, numWorkers, handlersData, ch, wg)
 
 	mux.Post(`/api/user/register`, createRegisterHandler(handlersData))
 	mux.Post(`/api/user/login`, createLoginHandler(handlersData))
