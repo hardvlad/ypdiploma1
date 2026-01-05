@@ -3,50 +3,50 @@ package handler
 import (
 	"net/http"
 	"strconv"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
 var (
-	isRateLimitedMux sync.Mutex
-	isRateLimited    bool
-	resumeTime       time.Time
+	atomicResumeTime atomic.Int64
 )
 
-func handle429(resp *http.Response, data Handlers) time.Duration {
+func initChecked() {
+	atomicResumeTime.Store(0)
+}
+
+func handle429(resp *http.Response, data Handlers) {
 	if resp.StatusCode == http.StatusTooManyRequests {
-		isRateLimitedMux.Lock()
-		defer isRateLimitedMux.Unlock()
 
 		var waitDuration time.Duration
 		if retryAfterStr := resp.Header.Get("Retry-After"); retryAfterStr != "" {
 			if seconds, err := strconv.Atoi(retryAfterStr); err == nil {
 				waitDuration = time.Duration(seconds) * time.Second
+				data.Logger.Debugw("Status 429", "event", "Получен статус 429, нужно подождать", "seconds", waitDuration)
 			} else {
 				waitDuration = 5 * time.Second
+				data.Logger.Debugw("Status 429", "event", "Получен статус 429, Retry-After не установлен, нужно подождать", "seconds", waitDuration)
 			}
 		} else {
 			waitDuration = 5 * time.Second
 		}
 
-		resumeTime = time.Now().Add(waitDuration)
-		isRateLimited = true
-		data.Logger.Debugw("Status 429", "event", "Получен статус 429, засыпаем на", "seconds", waitDuration)
-		return waitDuration
+		atomicResumeTime.Store(time.Now().Add(waitDuration).UnixNano())
 	}
-	return 0
 }
 
-func CheckAndPause() {
-	isRateLimitedMux.Lock()
+func checkAndPause() {
+	loadedNano := atomicResumeTime.Load()
+	isRateLimited := false
+	if loadedNano > 0 {
+		isRateLimited = true
+	}
 	if isRateLimited {
+		resumeTime := time.Unix(0, loadedNano)
 		waitTime := time.Until(resumeTime)
 		if waitTime > 0 {
-			isRateLimitedMux.Unlock()
 			<-time.NewTimer(waitTime).C
-			isRateLimitedMux.Lock()
 		}
-		isRateLimited = false
+		atomicResumeTime.Store(0)
 	}
-	isRateLimitedMux.Unlock()
 }

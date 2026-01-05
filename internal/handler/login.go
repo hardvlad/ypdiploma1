@@ -45,7 +45,7 @@ func createLoginHandler(data Handlers) http.HandlerFunc {
 		}
 
 		// получение из базы userID и хэша пароля по логину
-		userID, pwdHash, err := data.Store.GetUserIDPasswordHashByLogin(user.Login)
+		userID, pwdHash, err := data.Store.GetUserIDPasswordHashByLogin(r.Context(), user.Login)
 		if err != nil {
 			data.Logger.Debugw(err.Error(), "event", "login - get userID error", "login", user.Login)
 			writeResponse(w, r, commonResponse{

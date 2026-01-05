@@ -24,8 +24,8 @@ func NewPGStorage(dbConn *sql.DB, logger *zap.SugaredLogger) *Storage {
 }
 
 // GetUserIDByLogin функция получение ID пользователя по его логину
-func (s *Storage) GetUserIDByLogin(login string) (int, error) {
-	row := s.DBConn.QueryRowContext(context.Background(), "SELECT id from users where login = $1", login)
+func (s *Storage) GetUserIDByLogin(ctx context.Context, login string) (int, error) {
+	row := s.DBConn.QueryRowContext(ctx, "SELECT id from users where login = $1", login)
 
 	userID := 0
 	err := row.Scan(&userID)
@@ -39,10 +39,10 @@ func (s *Storage) GetUserIDByLogin(login string) (int, error) {
 }
 
 // CreateUser функция создание пользователя по его логину и хешу пароля
-func (s *Storage) CreateUser(login string, pwdHash string) (int, error) {
+func (s *Storage) CreateUser(ctx context.Context, login string, pwdHash string) (int, error) {
 	var userID int
 	err := s.DBConn.QueryRowContext(
-		context.Background(),
+		ctx,
 		"INSERT INTO users (login, password_hash) VALUES ($1, $2) RETURNING id",
 		login,
 		pwdHash,
@@ -56,8 +56,8 @@ func (s *Storage) CreateUser(login string, pwdHash string) (int, error) {
 }
 
 // GetUserIDPasswordHashByLogin функция получение ID пользователя и хеша пароля по его логину
-func (s *Storage) GetUserIDPasswordHashByLogin(login string) (int, string, error) {
-	row := s.DBConn.QueryRowContext(context.Background(), "SELECT id, password_hash from users where login = $1", login)
+func (s *Storage) GetUserIDPasswordHashByLogin(ctx context.Context, login string) (int, string, error) {
+	row := s.DBConn.QueryRowContext(ctx, "SELECT id, password_hash from users where login = $1", login)
 
 	userID := 0
 	var pwdHash string
@@ -72,8 +72,8 @@ func (s *Storage) GetUserIDPasswordHashByLogin(login string) (int, string, error
 }
 
 // GetUserIDOfOrder функция получение ID пользователя в заказе
-func (s *Storage) GetUserIDOfOrder(orderNumber string) (int, error) {
-	row := s.DBConn.QueryRowContext(context.Background(), "SELECT user_id from orders where number = $1", orderNumber)
+func (s *Storage) GetUserIDOfOrder(ctx context.Context, orderNumber string) (int, error) {
+	row := s.DBConn.QueryRowContext(ctx, "SELECT user_id from orders where number = $1", orderNumber)
 
 	userID := 0
 	err := row.Scan(&userID)
@@ -87,8 +87,8 @@ func (s *Storage) GetUserIDOfOrder(orderNumber string) (int, error) {
 }
 
 // InsertNewOrder функция сохранения в базе данных нового заказа
-func (s *Storage) InsertNewOrder(orderNumber string, userID int) error {
-	_, err := s.DBConn.ExecContext(context.Background(), "INSERT INTO orders (number, user_id, status_id) VALUES ($1, $2, 1)", orderNumber, userID)
+func (s *Storage) InsertNewOrder(ctx context.Context, orderNumber string, userID int) error {
+	_, err := s.DBConn.ExecContext(ctx, "INSERT INTO orders (number, user_id, status_id) VALUES ($1, $2, 1)", orderNumber, userID)
 	return err
 }
 
@@ -117,8 +117,8 @@ func (s *Storage) GetOrders(userID int) ([]repository.OrdersResult, error) {
 }
 
 // GetUserBalance функция получения сумм начислений и списаний пользователя
-func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
-	row := s.DBConn.QueryRowContext(context.Background(), "SELECT (select sum(amount) from withdrawals where user_id=users.id), (select sum(accrual) from orders where user_id=users.id) FROM users WHERE id = $1", userID)
+func (s *Storage) GetUserBalance(ctx context.Context, userID int) (float64, float64, error) {
+	row := s.DBConn.QueryRowContext(ctx, "SELECT (select sum(amount) from withdrawals where user_id=users.id), (select sum(accrual) from orders where user_id=users.id) FROM users WHERE id = $1", userID)
 	var withdrawals sql.NullFloat64
 	var accruals sql.NullFloat64
 
@@ -142,26 +142,26 @@ func (s *Storage) GetUserBalance(userID int) (float64, float64, error) {
 }
 
 // InsertWithdrawal функция сохранения в базе данных списания баланса пользователя
-func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) error {
-	sqlStmt := `
+func (s *Storage) InsertWithdrawal(ctx context.Context, orderNumber string, sum float64, userID int) error {
+	const sqlStmt = `
     INSERT INTO withdrawals (number, amount, user_id) 
     select $3, $2, id from users
     where id = $1 and  coalesce((select sum(accrual) from orders where user_id=users.id),0) -
                           coalesce((select sum(amount) from withdrawals where user_id=users.id),0) >= $2;
 `
-	tx, err := s.DBConn.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	tx, err := s.DBConn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.PrepareContext(context.Background(), sqlStmt)
+	stmt, err := tx.PrepareContext(ctx, sqlStmt)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 	defer stmt.Close()
 
-	res, err := stmt.ExecContext(context.Background(), userID, sum, orderNumber)
+	res, err := stmt.ExecContext(ctx, userID, sum, orderNumber)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -185,8 +185,8 @@ func (s *Storage) InsertWithdrawal(orderNumber string, sum float64, userID int) 
 }
 
 // GetWithdrawals функция получения списка списаний пользователя
-func (s *Storage) GetWithdrawals(userID int) ([]repository.WithdrawalsResult, error) {
-	rows, err := s.DBConn.QueryContext(context.Background(), "SELECT number, amount, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC", userID)
+func (s *Storage) GetWithdrawals(ctx context.Context, userID int) ([]repository.WithdrawalsResult, error) {
+	rows, err := s.DBConn.QueryContext(ctx, "SELECT number, amount, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -209,13 +209,13 @@ func (s *Storage) GetWithdrawals(userID int) ([]repository.WithdrawalsResult, er
 }
 
 // SetOrderStatusAccrual функция установления статуса заказа и суммы начислений
-func (s *Storage) SetOrderStatusAccrual(orderNumber string, status string, accrual float64) error {
+func (s *Storage) SetOrderStatusAccrual(ctx context.Context, orderNumber string, status string, accrual float64) error {
 	var statusID int
-	err := s.DBConn.QueryRowContext(context.Background(), "SELECT id FROM statuses WHERE name = $1", status).Scan(&statusID)
+	err := s.DBConn.QueryRowContext(ctx, "SELECT id FROM statuses WHERE name = $1", status).Scan(&statusID)
 	if err != nil {
 		return err
 	}
 
-	_, err = s.DBConn.ExecContext(context.Background(), "UPDATE orders SET status_id = $1, accrual = $2 WHERE number = $3", statusID, accrual, orderNumber)
+	_, err = s.DBConn.ExecContext(ctx, "UPDATE orders SET status_id = $1, accrual = $2 WHERE number = $3", statusID, accrual, orderNumber)
 	return err
 }

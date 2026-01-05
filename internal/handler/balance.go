@@ -38,7 +38,7 @@ func createGetBalanceHandler(data Handlers) http.HandlerFunc {
 		// получаем баланс пользователя из базы
 		var balance GetBalanceResponse
 		var err error
-		balance.Current, balance.Withdrawn, err = data.Store.GetUserBalance(userID)
+		balance.Current, balance.Withdrawn, err = data.Store.GetUserBalance(r.Context(), userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -105,7 +105,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 		}
 
 		// получаем баланс из базы данных
-		accrued, withdrawn, err := data.Store.GetUserBalance(userID)
+		accrued, withdrawn, err := data.Store.GetUserBalance(r.Context(), userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -128,7 +128,7 @@ func createWithdrawHandler(data Handlers) http.HandlerFunc {
 		}
 
 		// сохраняем списание в базе данных
-		err = data.Store.InsertWithdrawal(requestData.OrderNumber, requestData.Sum, userID)
+		err = data.Store.InsertWithdrawal(r.Context(), requestData.OrderNumber, requestData.Sum, userID)
 		if err != nil {
 			data.Logger.Debugw(err.Error(), "event", "insert withdrawal", "userID", userID, "number", requestData.OrderNumber, "sum", requestData.Sum)
 			writeResponse(w, r, commonResponse{
@@ -162,7 +162,7 @@ func createGetWithdrawalsHandler(data Handlers) http.HandlerFunc {
 		}
 
 		// получаем список списаний из базы данных
-		withdrawals, err := data.Store.GetWithdrawals(userID)
+		withdrawals, err := data.Store.GetWithdrawals(r.Context(), userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
 				isError: true,

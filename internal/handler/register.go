@@ -45,7 +45,7 @@ func createRegisterHandler(data Handlers) http.HandlerFunc {
 		}
 
 		// получение из базы userID по логину
-		userID, err := data.Store.GetUserIDByLogin(user.Login)
+		userID, err := data.Store.GetUserIDByLogin(r.Context(), user.Login)
 		if err != nil {
 			data.Logger.Debugw(err.Error(), "event", "register - get userID error", "login", user.Login)
 			writeResponse(w, r, commonResponse{
@@ -79,7 +79,7 @@ func createRegisterHandler(data Handlers) http.HandlerFunc {
 		}
 
 		// сохранение пользователя в базе данных
-		userID, err = data.Store.CreateUser(user.Login, pwdHash)
+		userID, err = data.Store.CreateUser(r.Context(), user.Login, pwdHash)
 		if err != nil {
 			data.Logger.Debugw(err.Error(), "event", "register - create user", "login", user.Login)
 			writeResponse(w, r, commonResponse{

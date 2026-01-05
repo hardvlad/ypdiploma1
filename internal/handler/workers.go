@@ -24,7 +24,7 @@ func accrualsWorker(ctx context.Context, id int, data Handlers, ch chan string, 
 	for {
 		select {
 		case orderNumber := <-ch:
-			err := processOrderAccruals(data, orderNumber)
+			err := processOrderAccruals(ctx, data, orderNumber)
 			if err != nil {
 				data.Logger.Errorw("accrualsWorker: processOrderAccruals error", "id", id, "orderNumber", orderNumber, "error", err)
 			}
@@ -36,9 +36,9 @@ func accrualsWorker(ctx context.Context, id int, data Handlers, ch chan string, 
 }
 
 // processOrderAccruals функция получения статуса заказа и начислений бонусов из внешнего сервиса
-func processOrderAccruals(data Handlers, number string) error {
-	CheckAndPause()
-	_ = data.Store.SetOrderStatusAccrual(number, "PROCESSING", 0)
+func processOrderAccruals(ctx context.Context, data Handlers, number string) error {
+	checkAndPause()
+	_ = data.Store.SetOrderStatusAccrual(ctx, number, "PROCESSING", 0)
 
 	accrualURL, err := url.JoinPath(data.Conf.AccrualAddress, "/api/orders/", number)
 	if err != nil {
@@ -50,7 +50,7 @@ func processOrderAccruals(data Handlers, number string) error {
 		return err
 	}
 
-	return data.Store.SetOrderStatusAccrual(number, status, accrual)
+	return data.Store.SetOrderStatusAccrual(ctx, number, status, accrual)
 }
 
 // fetchOrderAccruals функция, в которой происходит обращение к внешнему сервису начислений

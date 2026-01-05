@@ -48,7 +48,7 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 		}
 
 		// проверяем есть ли уже заказ с таким номером в базе данных и получаем пользователя, создавшего заказ
-		existingOrderUserID, err := data.Store.GetUserIDOfOrder(orderNumber)
+		existingOrderUserID, err := data.Store.GetUserIDOfOrder(r.Context(), orderNumber)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
 				isError: true,
@@ -77,7 +77,7 @@ func createPostOrdersHandler(data Handlers, ch chan string) http.HandlerFunc {
 		}
 
 		// сохраняем новый заказ в базе данных
-		err = data.Store.InsertNewOrder(orderNumber, userID)
+		err = data.Store.InsertNewOrder(r.Context(), orderNumber, userID)
 		if err != nil {
 			writeResponse(w, r, commonResponse{
 				isError: true,
