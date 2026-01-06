@@ -12,6 +12,7 @@ import (
 )
 
 func CreateWorkers(ctx context.Context, numWorkers int, data Handlers, ch chan string, wg *sync.WaitGroup) {
+	initResumeLocker()
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go accrualsWorker(ctx, i, data, ch, wg)

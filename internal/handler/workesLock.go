@@ -11,7 +11,7 @@ var (
 	atomicResumeTime atomic.Int64
 )
 
-func initChecked() {
+func initResumeLocker() {
 	atomicResumeTime.Store(0)
 }
 
